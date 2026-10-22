@@ -182,10 +182,10 @@ http://localhost:5050
 
 ## 👥 Authors & Acknowledgments
 
-* **Pragadheeshwar D** — *Department of Information Technology, SSN College of Engineering*
-* **Sriram G S** — *Department of Information Technology, SSN College of Engineering*
-* **Cibi K** — *Department of Information Technology, SSN College of Engineering*
-* **Sathiyarajan K** — *Department of Information Technology, SSN College of Engineering*
+* **Pragadheeshwar D** — *Department of Information Technology, Karpagam College of Engineering*
+* **Sriram G S** — *Department of Information Technology, Karpagam College of Engineering*
+* **Cibi K** — *Department of Information Technology, Karpagam College of Engineering*
+* **Sathiyarajan K** — *Department of Information Technology, Karpagam College of Engineering*
 
 ---
 
@@ -197,7 +197,7 @@ If you use **ConG-MoE** or our benchmark findings in your research, please cite:
 @article{pragadheeshwar2026congmoe,
   title={Mitigating Majority-Class Bias in Code-Mixed Tanglish Sentiment Classification: A Comparative Study of Sub-Word, Deep Sequential, and Discourse-Guided Architectures},
   author={Pragadheeshwar, D. and Sriram, G. S. and Cibi, K. and Sathiyarajan, K.},
-  journal={Department of Information Technology, Sri Sivasubramaniya Nadar College of Engineering},
+  journal={Department of Information Technology, Karpagam College of Engineering},
   year={2026}
 }
 ```
