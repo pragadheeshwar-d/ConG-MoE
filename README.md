@@ -8,11 +8,13 @@
 [![Latency](https://img.shields.io/badge/Latency-0.33ms%20%2F%20comment-brightgreen)](#-results)
 [![Hardware](https://img.shields.io/badge/Hardware-CPU%20only-success)](#-results)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Live Page](https://img.shields.io/badge/Live%20Page-GitHub%20Pages-blueviolet?logo=github)](https://pragadheeshwar-d.github.io/ConG-MoE/)
 
 <p align="center">
   <b>A fast three-head gated ensemble that reduces majority-class collapse in Romanized Tamil-English (Tanglish) YouTube comments, and runs on a regular CPU.</b>
 </p>
 
+[Live Page](https://pragadheeshwar-d.github.io/ConG-MoE/) •
 [Summary](#-summary) •
 [Method](#-method) •
 [Results](#-results) •
@@ -229,7 +231,7 @@ Then open `http://localhost:5050` in your browser.
 * **Cibi K** — *Department of Information Technology, Karpagam College of Engineering*
 * **Sathiyarajan K** — *Department of Information Technology, Karpagam College of Engineering*
 
-**Mentor:** Dr. Kannimuthu S
+* **Dr. Kannimuthu S** — *Mentor, Department of Information Technology, Karpagam College of Engineering*
 
 The dataset builds on public Tanglish comment corpora (Chakravarthi et al., 2020; Bhatia, Kaggle, 2021). Please follow the original sources' licenses.
 
