@@ -5,7 +5,7 @@ import pickle
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from predict_interactive import get_or_train_model, predict_comment, STATE_EMOJIS, TARGET_CLASSES
 
-PORT = 5050
+PORT = int(os.environ.get("PORT", 7860 if "SPACE_ID" in os.environ else 5050))
 MODEL = None
 
 HTML_PAGE = """<!DOCTYPE html>
@@ -218,18 +218,36 @@ HTML_PAGE = """<!DOCTYPE html>
 </html>
 """
 
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+INDEX_PATH = os.path.join(ROOT_DIR, "index.html")
+
 class TanglishServer(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
-        self.wfile.write(HTML_PAGE.encode("utf-8"))
+        if os.path.exists(INDEX_PATH):
+            with open(INDEX_PATH, "r", encoding="utf-8") as f:
+                self.wfile.write(f.read().encode("utf-8"))
+        else:
+            self.wfile.write(HTML_PAGE.encode("utf-8"))
 
     def do_POST(self):
         if self.path == "/predict":
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length).decode("utf-8")
-            data = json.loads(body)
+            try:
+                data = json.loads(body)
+            except Exception:
+                data = {}
             comment = data.get("comment", "")
 
             res = predict_comment(comment, MODEL)
@@ -237,6 +255,7 @@ class TanglishServer(BaseHTTPRequestHandler):
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(json.dumps(res).encode("utf-8"))
 

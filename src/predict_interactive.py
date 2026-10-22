@@ -81,20 +81,35 @@ def predict_comment(raw_text: str, model: CongMoeClassifier):
     pivot_pred = model.pivot_head.predict_sample(raw_text)
     emoji_pred = model.emoji_head.predict_sample(raw_text)
 
+    # Affective terms
+    pos_terms = {"sema", "mass", "super", "nalla", "best", "verithanam", "thalaiva", "level", "good", "love", "arputham", "marana"}
+    neg_terms = {"worst", "waste", "mokka", "bore", "flaw", "bad", "disaster", "terrible", "hate", "daridram", "kevalam"}
+    words_set = set(clean_text.split())
+    has_pos_term = any(t in words_set for t in pos_terms)
+    has_neg_term = any(t in words_set for t in neg_terms)
+    has_sad_emoji = any(e in raw_text for e in ["😢", "😭", "😡", "👎", "🤮", "💔", "🤦", "🤦‍♂️", "😠"])
+    has_happy_emoji = any(e in raw_text for e in ["😊", "😍", "🎉", "🔥", "❤️", "👍", "👏", "💯", "💥", "🤩"])
+    is_emoji_dissonance = (has_pos_term and has_sad_emoji) or (has_neg_term and has_happy_emoji)
+
     # 3. Gating Decision Logic
     override_reason = None
 
-    if confidence < model.confidence_threshold and (pivot_pred == "Mixed_feelings" or emoji_pred == "Mixed_feelings"):
+    if (has_pivot and has_pos_term and has_neg_term) or (has_pivot and has_regret) or (has_regret and "acting" in clean_text):
         final_state = "Mixed_feelings"
-        triggers = []
-        if pivot_pred == "Mixed_feelings":
-            triggers.append("Contrastive pivot (e.g. 'aana'/'but') detected a polarity flip")
-        if emoji_pred == "Mixed_feelings":
-            triggers.append("Affective dissonance detected between text and emojis")
-        override_reason = " + ".join(triggers)
-    elif (has_pivot and has_regret) or (has_regret and "acting" in clean_text):
+        override_reason = "Contrastive pivot ('aana'/'but') connecting positive and negative clauses"
+    elif is_emoji_dissonance and confidence < 0.85:
         final_state = "Mixed_feelings"
-        override_reason = "Counterfactual suggestion ('could have been better') detected alongside praise"
+        override_reason = "Affective dissonance detected between text and emojis"
+    elif confidence < model.confidence_threshold and (pivot_pred == "Mixed_feelings" or (emoji_pred == "Mixed_feelings" and not (has_neg_term and has_sad_emoji))):
+        final_state = "Mixed_feelings"
+        override_reason = "Contrastive pivot or discordance detected by specialist head"
+    elif ("?" in raw_text or any(q in words_set for q in ["eppo", "eppadi", "enna", "ethu", "when", "why", "who", "what"])) and (base_pred == "Unknown_state" or prob_dict.get("Unknown_state", 0) > 0.15 or confidence < 0.60):
+        final_state = "Unknown_state"
+        override_reason = "Inquiry syntax ('?') and interrogative token detected"
+    elif has_neg_term and not has_pos_term and (base_pred != "Negative"):
+        # Strong negative keywords should not fall to Positive
+        final_state = "Negative"
+        override_reason = "Explicit negative evaluation keywords detected"
     else:
         final_state = base_pred
 
