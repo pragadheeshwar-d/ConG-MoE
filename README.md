@@ -1,97 +1,136 @@
 <div align="center">
 
 # 🧠 ConG-MoE v2
-### *Contrastive & Discourse-Guided Mixture-of-Experts for Romanized Tamil (Tanglish) Sentiment Analysis*
+### *Mitigating Majority-Class Bias in Code-Mixed Tanglish Sentiment Classification*
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/scikit--learn-PyTorch-orange?logo=pytorch&logoColor=white)](https://pytorch.org/)
-[![UI](https://img.shields.io/badge/Web%20App-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](http://localhost:5050)
-[![Inference Speed](https://img.shields.io/badge/Latency-0.33ms%20%2F%20comment-brightgreen)](#-benchmark-results)
+[![Latency](https://img.shields.io/badge/Latency-0.33ms%20%2F%20comment-brightgreen)](#-results)
+[![Hardware](https://img.shields.io/badge/Hardware-CPU%20only-success)](#-results)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Research-IEEE%20Format-informational)](#-authors--acknowledgments)
 
 <p align="center">
-  <b>A lightweight, ultra-fast Mixture-of-Experts architecture designed to resolve the majority-class collapse pathology in code-mixed Dravidian social media comments.</b>
+  <b>A fast three-head gated ensemble that reduces majority-class collapse in Romanized Tamil-English (Tanglish) YouTube comments, and runs on a regular CPU.</b>
 </p>
 
-[Key Features](#-key-architectural-highlights) •
-[Architecture](#-system-architecture) •
-[Benchmarks](#-benchmark-results) •
-[Quickstart](#-quick-start) •
+[Summary](#-summary) •
+[Method](#-method) •
+[Results](#-results) •
+[Quick Start](#-quick-start) •
 [Web App](#-interactive-web-application) •
+[Structure](#-repository-structure) •
 [Citation](#-citation)
 
 ---
 
 </div>
 
-## 📌 Executive Summary
+## 📌 Summary
 
-Social media commentary across South Asia is heavily conducted in **Tanglish** (phonetically Romanized Tamil interleaved with English colloquialisms). While standard NLP baselines score ~78% accuracy, they suffer from the **Majority-Class Accuracy Paradox**:
+Tanglish is Romanized Tamil mixed with English. In a typical entertainment dataset, about **70% of comments are positive**, so standard classifiers fall back on *Positive* whenever a comment is ambiguous. On our 5,000-comment test set, an unweighted TF-IDF baseline scores **77.60% accuracy**, yet labels **75.0% of Mixed-feelings comments as Positive** (macro-F1 only 0.5256). We call this **majority-class collapse**.
 
-> Standard models blindly collapse minority feelings toward the dominant Positive class (~70% of YouTube comments), misclassifying **over 75% of mixed-sentiment feedback as purely positive**.
+This repository accompanies our paper. We compare **five architectures** on **20,000 comments** and propose **ConG-MoE v2**:
 
-**ConG-MoE v2** solves this pathology without requiring heavy, resource-intensive transformers, running at **sub-millisecond CPU latencies (>3,000 comments/sec)**.
+- Mixed-feelings recall: **20.55% → 74.49%**
+- Unknown-state recall: **21.66% → 80.51%**
+- Mixed→Positive collapse: **75.00% → 14.04%**
+- Inference: **0.33 ms per comment** on one CPU core, over **6× faster** than CNN + BiLSTM
+- Training: **15.5 s** on CPU, no GPU
+
+> **Trade-off.** CNN + BiLSTM has the highest raw accuracy (86.12%) and macro-F1 (0.7578). ConG-MoE v2 gives up accuracy (77.48%) for much higher minority-class recall, lower collapse, and CPU-friendly latency, which suits content moderation, where missing a nuanced comment costs more than a few extra flags.
 
 ---
 
-## ⚡ Key Architectural Highlights
+## 🔍 Why Tanglish Is Hard
 
-| Feature | Baseline Approaches | ConG-MoE v2 (Proposed) |
+| Bottleneck | What happens | How ConG-MoE v2 responds |
 | :--- | :--- | :--- |
-| **Vocabulary Coverage** | 14.2% (85.8% OOV with word tokens) | **>99.4%** coverage via Dual-Stream Morpho-Orthographic Sub-Words |
-| **Discourse Pivots** | Bag-of-words ignores contrast | **Contrastive Pivot Head** captures adversative conjunctions (*aana*, *irundhalum*) |
-| **Emoji Processing** | Discarded or stripped as non-ASCII | **Affect-Preserving Demojization** maps affective glyphs to sentiment tokens |
-| **Class Imbalance** | Optimizes unweighted accuracy | **Cost-Sensitive 12.5× Penalty** on minority sentiment misclassifications |
-| **Operational Speed** | 30–100 ms (Transformers) | **0.33 ms / comment on a single CPU core** ⚡ |
+| **Spelling variation** | No standard spelling (`padam`, `padham`, `paadam`) makes word vocabularies large and sparse | Word-bounded character n-grams (`char_wb`, n = 2–4) |
+| **Agglutinative suffixes** | `-la`, `-oda`, `-ku` attach to Tamil and English words; only **14.2%** of words matched a 242,337-entry Tamil transliteration dictionary (85.8% OOV) | Sub-word features instead of whole-word tokens |
+| **Emoji stripping** | Cleaning removes emojis that carry sentiment (sarcasm becomes "positive") | Affect-preserving demojization |
+| **Mid-sentence reversals** | “Sema hype *aana* padam fulla mokka”: positive words outweigh the negative clause in bag-of-words | Contrastive conjunction monitor (Head 2) |
 
 ---
 
-## 🏛 System Architecture
+## 🏛 Method
 
-ConG-MoE v2 utilizes a **3-Head Soft-Gated Mixture-of-Experts** topology:
+**Pre-processing**
+- **Demojization:** emojis become text tokens (`emoji_fire`) instead of being removed
+- **Run-length compression:** 3 or more repeated characters become 2 (`massssss` → `mass`)
+- **Selective punctuation:** `?` is kept as a signal for Unknown-state comments
+
+**Features:** word uni/bigrams (up to 10k, sub-linear TF-IDF) plus `char_wb` n-grams of length 2–4 (up to 25k), joined into a **35k-dimension sparse vector**.
+
+**Class weights:** inverse frequency, `w_j = N / (K · n_j)` with N = 15,000 and K = 4:
+
+| Positive | Negative | Mixed feelings | Unknown state |
+| :---: | :---: | :---: | :---: |
+| 0.36 | 1.89 | 2.14 | 4.50 |
 
 ```mermaid
 flowchart TD
-    A["Raw Input Comment\n(e.g., 'acting sema aana climax mokka 🤮')"] --> B["Affect-Preserving Demojizer\n(Translates 🤮 to ':disgusted_face:')"]
-    B --> C["Dual-Stream Tokenizer\n(Word N-Grams + Bounded Char-WB 2-4)"]
-    
-    C --> D1["Head 1: Statistical Classifier\n(Cost-Sensitive Calibrated SGD)"]
-    C --> D2["Head 2: Contrastive Conjunction Monitor\n(Detects 'aana', 'irundhalum', 'analum')"]
-    C --> D3["Head 3: Emoji Conflict Resolver\n(Detects discordant affective glyphs)"]
-    
-    D1 --> E["Soft Gated Routing Layer\n(Context-Weighted Probabilistic Ensemble)"]
-    D2 --> E
-    D3 --> E
-    
-    E --> F{"Final Sentiment Prediction"}
-    F -->|Pol: Positive| G1["Positive (93.2% Precision)"]
-    F -->|Pol: Negative| G2["Negative"]
-    F -->|Pol: Mixed| G3["Mixed Feelings (74.5% Recall)"]
-    F -->|Pol: Unknown| G4["Unknown State (80.5% Recall)"]
+    A["Raw comment<br/>'acting sema aana climax mokka 🤮'"] --> B["Normalise + demojize"]
+    B --> C["Dual-stream features<br/>word 1-2 grams (10k) + char_wb 2-4 (25k)"]
+    C --> H1["Head 1: class-weighted<br/>logistic regression"]
+    B --> H2["Head 2: contrastive<br/>conjunction monitor"]
+    B --> H3["Head 3: emoji-conflict<br/>monitor"]
+    H1 --> G{"Soft gate:<br/>confidence below threshold<br/>and Head 2 or Head 3 votes Mixed?"}
+    H2 --> G
+    H3 --> G
+    G -->|yes| M["Mixed feelings"]
+    G -->|no| P["Head 1 prediction"]
 ```
+
+- **Head 1, statistical base:** class posteriors P(c | x), base prediction and confidence conf(x) = max P(c | x)
+- **Head 2, conjunction monitor:** votes *Mixed* when sentiment on either side of an adversative conjunction (*aana, aanal, irundhalum, aanaalum, but*) is opposite
+- **Head 3, emoji-conflict monitor:** votes *Mixed* when positive words meet negative emojis, or the reverse
+- **Soft gate:** the monitors act **only when Head 1 is unsure**. Per the paper, τ = 0.60.
+
+### The five models compared
+
+| # | Model | Description |
+| :-: | :--- | :--- |
+| 1 | TF-IDF + LR | Unigram TF-IDF (10k), emojis removed, unweighted logistic regression |
+| 2 | BiLSTM | 20k vocabulary, 128-d embeddings, BiLSTM (64 per direction), unweighted loss |
+| 3 | CNN + BiLSTM | Conv1D (128 filters, kernel 3) + BiLSTM (64), unweighted loss |
+| 4 | ConG-Hybrid | Model 3 with demojized input and inverse-frequency class weights |
+| 5 | **ConG-MoE v2** | Dual-stream features, class weights, three-head soft gate |
 
 ---
 
-## 📊 Benchmark Results
+## 📊 Results
 
-Evaluated on a rigorous **20,000-comment annotated corpus** and a **5,000-sample held-out test split**:
+**Dataset:** 20,000 Tanglish YouTube comments (Positive 69.56%, Negative 13.22%, Mixed 11.67%, Unknown 5.55%), stratified 75/25 split: 15,000 train, 5,000 test. Experiments ran on a laptop with an 8-core CPU and 16 GB RAM, no GPU.
 
-### 🎯 5,000-Sample Held-Out Test Evaluation
+### 🎯 Held-out test set (N = 5,000)
 
-| Model Architecture | Macro-F1 | Mixed Recall | Unknown Recall | Mixed→Positive Collapse | Latency (CPU) |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **TF-IDF + Logistic Regression** *(Baseline)* | 0.5256 | 20.55% | 21.66% | 75.00% ⚠️ | **0.007 ms** |
-| **BiLSTM** *(Sequential Baseline)* | 0.6168 | 40.24% | 40.07% | 43.84% | 0.55 ms |
-| **CNN + BiLSTM** *(Shanmugavadivel et al.)* | 0.7578 | 64.55% | 72.20% | 28.42% | 1.99 ms |
-| **ConG-Hybrid** *(Demojized Neural)* | 0.6476 | 82.19% | 77.62% | 8.73% | 1.87 ms |
-| 🏆 **ConG-MoE v2 (Proposed Flagship)** | **0.6887** | **74.49%** | **80.51%** | **14.04%** 📉 | **0.33 ms** ⚡ |
+| Model | Acc | Macro-F1 | Mixed Recall | Unknown Recall | Mixed→Positive Collapse | Latency (CPU) | Train |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| TF-IDF + LR *(baseline)* | 77.60% | 0.5256 | 20.55% | 21.66% | 75.00% ⚠️ | **0.007 ms** | 1.15 s |
+| BiLSTM | 78.86% | 0.6168 | 40.24% | 40.07% | 43.84% | 0.555 ms | 140.88 s |
+| CNN + BiLSTM *(Shanmugavadivel et al.)* | **86.12%** | **0.7578** | 64.55% | 72.20% | 28.42% | 1.987 ms | 204.18 s |
+| ConG-Hybrid | 69.30% | 0.6476 | **82.19%** | 77.62% | **8.73%** | 1.870 ms | 370.52 s |
+| 🏆 **ConG-MoE v2** *(proposed)* | 77.48% | 0.6887 | 74.49% | **80.51%** | 14.04% | 0.328 ms | **15.50 s** |
+
+*Collapse is the share of true Mixed comments predicted as Positive (lower is better). Latency is per comment on one CPU thread.*
 
 <p align="center">
-  <img src="docs/sentiment_model_comparison_20k.png" alt="Benchmark Comparison Chart" width="800"/>
+  <img src="docs/sentiment_model_comparison_20k.png" alt="Benchmark comparison chart" width="800"/>
 </p>
 
-> 🚀 **Key takeaway:** ConG-MoE v2 **slashes minority-to-majority collapse by over 80%** while executing **6× faster than CNN+BiLSTM** and requiring zero GPU acceleration.
+- Macro-F1 improves by **31.0%** over the baseline (0.5256 → 0.6887).
+- Mixed comments classified correctly: **120 → 435** of 584. Mixed→Positive errors: **438 → 82**.
+- The baseline predicts Positive for 4,390 of 5,000 comments (87.8%), which explains its 77.6% accuracy.
+
+### 🧪 Example predictions
+
+| Comment (English gloss) | Truth | Baseline | ConG-MoE v2 |
+| :--- | :---: | :---: | :---: |
+| `padam sema mass verithanam aanal second half bore` *(great hype, but 2nd half boring)* | Mixed | Positive | **Mixed** |
+| `acting sema aana screenplay worst direction waste` *(acting great, screenplay worst)* | Mixed | Positive | **Mixed** |
+| `GOAT trailer Vera level... is that the new release, brother???` *(asks about OTT release)* | Unknown | Positive | **Unknown** |
+
+> Evaluation on the full 20,000-comment corpus (which includes the training data) is also reported in the paper and saved in `docs/*_20k_results.csv`. Those numbers are higher and are not a held-out result.
 
 ---
 
@@ -99,55 +138,45 @@ Evaluated on a rigorous **20,000-comment annotated corpus** and a **5,000-sample
 
 ### 1. Installation
 
-Clone this repository and install dependencies:
-
 ```bash
 git clone https://github.com/pragadheeshwar-d/ConG-MoE.git
 cd ConG-MoE
 pip install -r requirements.txt
+pip install torch   # only needed to re-run the benchmark scripts
 ```
 
 ### 2. Interactive Terminal CLI
-
-Test individual comments directly in your terminal:
 
 ```bash
 python run_cli.py
 ```
 
-Or pass a string directly via arguments:
+Or pass a comment directly:
 
 ```bash
 python run_cli.py "acting sema aana climax mokka 🤮"
 ```
 
-**Output:**
-```json
-{
-  "comment": "acting sema aana climax mokka 🤮",
-  "predicted_sentiment": "Mixed_feelings",
-  "confidence": 0.912,
-  "detected_pivots": ["aana"],
-  "demojized_tokens": [":disgusted_face:"],
-  "latency_ms": 0.28
-}
+For each comment the CLI prints the processed text, the predicted state, the base model's prediction and confidence, whether the specialist heads overrode it to *Mixed feelings* (and why), the inference latency, and a per-class probability breakdown. Type `samples` for built-in examples, `exit` to quit.
+
+### 3. Re-run the benchmarks
+
+Run from the repository root (results are written to `docs/`):
+
+```bash
+python src/benchmark_5_models.py
+python src/benchmark_p2_models.py
 ```
 
 ---
 
 ## 💻 Interactive Web Application
 
-Launch the clean, browser-based user interface:
-
 ```bash
 python run_web.py
 ```
-Then navigate to:
-```text
-http://localhost:5050
-```
 
-* Features real-time polarity breakdown, confidence meter, contrastive token highlighter, and batch CSV analysis.
+Then open `http://localhost:5050` in your browser.
 
 ---
 
@@ -155,28 +184,41 @@ http://localhost:5050
 
 ```text
 ├── data/
-│   ├── tanglish_test_20000_with_labels.csv   # 20,000 annotated comment benchmark
-│   └── tanglish_transliterated_lexicon.csv   # Reference lexicon (242,337 words)
+│   ├── tanglish_test_20000_with_labels.csv     # 20,000 labelled comments
+│   └── tanglish_transliterated_lexicon.csv     # Tamil transliteration dictionary (242,337 words)
 │
 ├── models/
-│   └── tanglish_congmoe_model.pkl           # Pre-trained ConG-MoE v2 cached weights
+│   └── tanglish_congmoe_model.pkl              # Pre-trained ConG-MoE v2
 │
 ├── docs/
-│   ├── ConG-MoE.pptx                         # Project presentation deck
-│   ├── benchmark_5_models_20k_chart.png      # 20k Benchmark model comparison chart
-│   └── sentiment_model_comparison_20k.png    # Official benchmark performance comparison
+│   ├── index.html                              # Project page (GitHub Pages)
+│   ├── ConG-MoE.pptx                           # Project presentation
+│   ├── *_results.csv                           # Benchmark results (5k test and 20k full corpus)
+│   └── *.png                                   # Benchmark charts
 │
 ├── src/
-│   ├── __init__.py
-│   ├── tanglish_sentiment_pipeline.py        # Core pipeline & feature extractors
-│   ├── predict_interactive.py               # Interactive CLI prediction engine
-│   └── web_app.py                           # Web application GUI (Streamlit/Flask)
+│   ├── tanglish_sentiment_pipeline.py          # Pre-processing, features, ConG-MoE v2
+│   ├── benchmark_5_models.py                   # Five-model comparison
+│   ├── benchmark_p2_models.py                  # Baseline comparison
+│   ├── predict_interactive.py                  # CLI prediction engine
+│   └── web_app.py                              # Local web app
 │
-├── run_web.py                               # Quick launcher: Web App
-├── run_cli.py                               # Quick launcher: Interactive CLI
-├── requirements.txt                         # Python dependencies
-└── README.md                                # Project documentation
+├── run_cli.py                                  # Launcher: CLI
+├── run_web.py                                  # Launcher: web app
+├── requirements.txt
+├── SIH_Presentation_ConG_MoE.pptx
+└── generate_sih_ppt.py
 ```
+
+---
+
+## ⚠️ Limitations
+
+- The conjunction monitor depends on a **manually curated** list of Tamil adversative markers. Other code-mixed languages (Manglish, Tenglish) need their own lexicons.
+- Raising minority recall lowers overall accuracy and adds some false alarms on Positive comments.
+- Transformers (mBERT, XLM-R, IndicBERT, MuRIL) were not benchmarked; the paper argues from reported latency and GPU needs that they are impractical for CPU-only moderation queues.
+
+**Future work:** learn the pivot lexicon automatically and extend to multilingual Dravidian code-mixed benchmarks.
 
 ---
 
@@ -187,23 +229,30 @@ http://localhost:5050
 * **Cibi K** — *Department of Information Technology, Karpagam College of Engineering*
 * **Sathiyarajan K** — *Department of Information Technology, Karpagam College of Engineering*
 
+**Mentor:** Dr. Kannimuthu S
+
+The dataset builds on public Tanglish comment corpora (Chakravarthi et al., 2020; Bhatia, Kaggle, 2021). Please follow the original sources' licenses.
+
 ---
 
 ## 📜 Citation
 
-If you use **ConG-MoE** or our benchmark findings in your research, please cite:
+If you use ConG-MoE or our benchmark findings, please cite:
 
 ```bibtex
-@article{pragadheeshwar2026congmoe,
-  title={Mitigating Majority-Class Bias in Code-Mixed Tanglish Sentiment Classification: A Comparative Study of Sub-Word, Deep Sequential, and Discourse-Guided Architectures},
-  author={Pragadheeshwar, D. and Sriram, G. S. and Cibi, K. and Sathiyarajan, K.},
-  journal={Department of Information Technology, Karpagam College of Engineering},
-  year={2026}
+@misc{pragadheeshwar2026congmoe,
+  title        = {Mitigating Majority-Class Bias in Code-Mixed Tanglish Sentiment Classification:
+                  A Comparative Study of Sub-Word, Deep Sequential, and Discourse-Guided Architectures},
+  author       = {Pragadheeshwar, D. and Sriram, G. S. and Cibi, K. and Sathiyarajan, K.},
+  year         = {2026},
+  howpublished = {GitHub repository},
+  note         = {Department of Information Technology, Karpagam College of Engineering, Coimbatore, India},
+  url          = {https://github.com/pragadheeshwar-d/ConG-MoE}
 }
 ```
 
 ---
 
 <div align="center">
-  <sub>Built with ❤️ for Code-Mixed Dravidian Natural Language Processing</sub>
+  <sub>Built for code-mixed Dravidian natural language processing</sub>
 </div>
