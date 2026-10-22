@@ -1,0 +1,28 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# IDEs & editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary / scratch files
+scratch/
+.system_generated/
+*.tmp
+
+# Exclude paper manuscript drafts
+*research_paper*
+*Research_Paper*
+*.docx
+
