@@ -1,13 +1,3 @@
----
-title: ConG MoE
-emoji: 🧠
-colorFrom: indigo
-colorTo: purple
-sdk: static
-pinned: false
-license: mit
-
----
 <div align="center">
 
 # 🧠 ConG-MoE v2
