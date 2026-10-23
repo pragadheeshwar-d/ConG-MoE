@@ -12,6 +12,21 @@ jobs:
         with:
           fetch-depth: 0
           lfs: true
+
+      - name: Inject Hugging Face Space Metadata
+        run: |
+          python -c '
+          frontmatter = """---\ntitle: ConG MoE\nemoji: 🧠\ncolorFrom: indigo\ncolorTo: purple\nsdk: static\npinned: false\nlicense: mit\n---\n"""
+          with open("README.md", "r", encoding="utf-8") as f:
+              c = f.read()
+          if not c.startswith("---"):
+              with open("README.md", "w", encoding="utf-8") as f:
+                  f.write(frontmatter + c)
+          '
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: inject HF space metadata for deployment" || true
+
       - name: Push to Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
