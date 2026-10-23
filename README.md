@@ -8,15 +8,13 @@
 [![Latency](https://img.shields.io/badge/Latency-0.33ms%20%2F%20comment-brightgreen)](#-results)
 [![Hardware](https://img.shields.io/badge/Hardware-CPU%20only-success)](#-results)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-yellow)](https://huggingface.co/spaces/pragadheesh06/ConG-MoE)
-[![GitHub Pages](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-blueviolet?logo=github)](https://pragadheeshwar-d.github.io/ConG-MoE/)
+[![Hugging Face Demo](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-yellow)](https://huggingface.co/spaces/pragadheesh06/ConG-MoE)
 
 <p align="center">
   <b>A fast three-head gated ensemble that reduces majority-class collapse in Romanized Tamil-English (Tanglish) YouTube comments, and runs on a regular CPU.</b>
 </p>
 
 [🤗 Hugging Face Demo](https://huggingface.co/spaces/pragadheesh06/ConG-MoE) •
-[🌐 GitHub Pages](https://pragadheeshwar-d.github.io/ConG-MoE/) •
 [Summary](#-summary) •
 [Method](#-method) •
 [Results](#-results) •
@@ -176,10 +174,9 @@ python src/benchmark_p2_models.py
 
 ## 💻 Interactive Web Application
 
-### 🌐 Live Demos
+### 🌐 Live Demo
 Experience the model live in your browser:
-* 🤗 **Hugging Face Spaces**: [https://huggingface.co/spaces/pragadheesh06/ConG-MoE](https://huggingface.co/spaces/pragadheesh06/ConG-MoE)
-* 🌐 **GitHub Pages**: [https://pragadheeshwar-d.github.io/ConG-MoE/](https://pragadheeshwar-d.github.io/ConG-MoE/)
+* 🤗 **Hugging Face Demo**: [https://huggingface.co/spaces/pragadheesh06/ConG-MoE](https://huggingface.co/spaces/pragadheesh06/ConG-MoE)
 
 ### 🖥️ Run Locally
 ```bash
